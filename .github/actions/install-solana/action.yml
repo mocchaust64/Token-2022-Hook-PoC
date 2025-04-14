@@ -1,0 +1,28 @@
+name: 'Install Solana CLI'
+description: 'Installs Solana CLI tools'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache Solana CLI
+      id: cache-solana
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/solana
+          ~/.local/share/solana
+          ~/.config/solana
+        key: solana-cli-1.16.8
+
+    - name: Install Solana CLI
+      if: steps.cache-solana.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v1.16.8/install)"
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        
+    - name: Add Solana CLI to PATH
+      shell: bash
+      run: |
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        solana --version 
