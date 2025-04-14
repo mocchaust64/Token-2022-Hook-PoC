@@ -26,26 +26,28 @@ Transfer hook yêu cầu:
 
 ### Scripts demo
 - `simple-script/simple-hook-demo.js`: Script đơn giản để demo cách chuyển token
-- `simple-script/create-pool.js`: Script demo thử nghiệm tạo pool (không thành công do giới hạn DEX)
-- `simple-script/raydium-sdk-v2-pool.js`: Script thử nghiệm Raydium SDK
+- `simple-script/create-spl-pool.js`: Script thử nghiệm tạo pool với SPL token-swap
+- `simple-script/create-raydium-pool-forced.js`: Script thử nghiệm tạo pool trên Raydium
+- `simple-script/create-fluxbeam-pool.js`: Script thử nghiệm tạo pool trên Fluxbeam
 
 ### Báo cáo và tài liệu
 - `docs/bao-cao-nghien-cuu.md`: Báo cáo chi tiết về kết quả nghiên cứu
-
-### Cấu hình dự án
-- `Anchor.toml`: Cấu hình Anchor framework
-- `package.json`: Cấu hình dependencies
 
 ## Cách chạy POC
 
 1. Clone repository này
 2. Cài đặt dependencies: `npm install`
 3. Chạy test để tạo token và khởi tạo transfer hook: `anchor test`
-4. (Tùy chọn) Chạy demo đơn giản:
+4. Chạy demo đơn giản:
    ```
-   cd simple-script
+   cd tests/simple-script
    npm install  # Cài đặt dependencies cho script
    node simple-hook-demo.js
+   ```
+5. Thử tạo pool với SPL token-swap:
+   ```
+   cd tests/simple-script
+   node create-spl-pool.js
    ```
 
 ## Mã nguồn ví dụ để chuyển token
@@ -80,32 +82,63 @@ const transaction = new Transaction()
   .add(transferIx);
 ```
 
-## Xác minh Transfer Hook
+## Kết quả Nghiên cứu
 
-Sau khi thực hiện chuyển token, bạn có thể xác minh transfer hook đã chạy bằng cách:
+### Chuyển Token Trực Tiếp
+- **Kết quả**: ✅ THÀNH CÔNG
+- Transfer hook hoạt động hoàn hảo khi chuyển token trực tiếp giữa các ví
+- Log Tracker PDA ghi lại được số lượt chuyển và số lượng token
 
-1. Kiểm tra log giao dịch trên Solana Explorer
-2. Kiểm tra tài khoản tracker: `LogTracker` tại địa chỉ PDA được tạo với seeds `["log-tracker", mint]`
+### Tích hợp với SPL Token-Swap
+- **Tạo tài khoản pool**: ✅ THÀNH CÔNG
+- **Chuyển token vào pool**: ✅ THÀNH CÔNG
+- **Khởi tạo pool**: ❌ THẤT BẠI (Custom Program Error 1)
+- **Swap token**: ❌ THẤT BẠI (pool không khởi tạo hoàn chỉnh)
+
+### Tích hợp với Raydium/Fluxbeam
+- **Raydium**: ❌ KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
+- **Fluxbeam**: ❌ KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
+- **Các DEX khác**: ❌ KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
 
 ## Thách thức tích hợp với DEX
 
-Nhiều DEX hiện tại chưa hỗ trợ đầy đủ Token-2022 với Transfer Hook. Thách thức chính:
+Những thách thức chính khi tích hợp token-2022 với transfer hook vào DEX:
 
-1. Raydium và hầu hết DEX khác không tự động tăng compute budget
-2. DEX không thêm các extra accounts cần thiết cho transfer hook
-3. Transfer hook có thể gây lỗi trong quy trình swap phức tạp
+1. **Extra Accounts**: Token-2022 với transfer hook yêu cầu thêm tài khoản bổ sung vào mỗi giao dịch chuyển token, trong khi các DEX hiện tại không được thiết kế để thêm các tài khoản này.
 
-Tham khảo `docs/bao-cao-nghien-cuu.md` để biết thêm chi tiết về các thách thức và giải pháp tiềm năng.
+2. **Compute Budget**: Transfer hook cần nhiều compute budget hơn để thực thi, DEX thường không tự động tăng compute budget.
+
+3. **Các kiểm tra của DEX**: DEX có các kiểm tra nghiêm ngặt về loại token và cách token được chuyển, không tương thích với token-2022.
+
+4. **Program Error**: SPL token-swap trả về Custom Program Error 1 khi khởi tạo pool với token-2022.
+
+## Giải pháp Tiềm năng
+
+1. **Sửa đổi SPL Token-Swap**:
+   - Fork mã nguồn SPL token-swap program
+   - Sửa đổi để xử lý token-2022 và extra accounts
+   - Tăng compute budget cho các giao dịch
+
+2. **Phát triển AMM Tùy chỉnh**:
+   - Xây dựng AMM mới được thiết kế cho token-2022
+   - Tự động thêm extra accounts cho transfer hook
+   - Tối ưu hóa cho token-2022 thay vì tương thích ngược
+
+3. **Đợi Hỗ trợ Chính thức**:
+   - Chờ DEX lớn như Raydium, Orca hỗ trợ token-2022
+   - Theo dõi cập nhật từ Solana Labs về Token-2022
 
 ## Kết quả đạt được
 
 1. **Thành công**:
    - Tạo và triển khai token Token-2022 với transfer hook
    - Transfer hook hoạt động đúng khi chuyển token trực tiếp
+   - Tạo được tài khoản pool và chuyển token vào pool
    - Xây dựng smart contract mẫu cho transfer hook
 
 2. **Hạn chế**:
    - Chưa tích hợp được với các DEX hiện tại
+   - Không thể khởi tạo pool hoàn chỉnh với token-2022
    - Cần phương án tự phát triển pool đơn giản hoặc đợi DEX hỗ trợ
 
 ## Để tìm hiểu thêm
