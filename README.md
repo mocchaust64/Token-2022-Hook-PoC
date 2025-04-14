@@ -40,7 +40,13 @@ Transfer hook yêu cầu:
 
 1. Clone repository này
 2. Cài đặt dependencies: `npm install`
-3. Chuyển token demo: `node simple-script/simple-hook-demo.js`
+3. Chạy test để tạo token và khởi tạo transfer hook: `anchor test`
+4. (Tùy chọn) Chạy demo đơn giản:
+   ```
+   cd simple-script
+   npm install  # Cài đặt dependencies cho script
+   node simple-hook-demo.js
+   ```
 
 ## Mã nguồn ví dụ để chuyển token
 
@@ -105,4 +111,12 @@ Tham khảo `docs/bao-cao-nghien-cuu.md` để biết thêm chi tiết về các
 ## Để tìm hiểu thêm
 
 Tham khảo báo cáo nghiên cứu đầy đủ trong file `docs/bao-cao-nghien-cuu.md`.
+
+## Báo cáo nghiên cứu
+
+File `docs/bao-cao-nghien-cuu.md` chứa báo cáo chi tiết về:
+- Quy trình tạo token Token-2022 với transfer hook
+- Kết quả thử nghiệm chức năng transfer hook
+- Thách thức khi tích hợp với DEX và giải pháp tiềm năng
+- Đề xuất phương án tích hợp DEX khả thi
 
