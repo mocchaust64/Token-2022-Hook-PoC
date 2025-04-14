@@ -1,157 +1,200 @@
-# Báo Cáo Nghiên Cứu: Tạo và Kiểm Tra Token-2022 với Transfer Hook
+# Báo cáo Nghiên cứu: Token-2022 với Transfer Hook trên Solana
 
-## Tổng Quan
+## 1. Giới thiệu
 
-Báo cáo này tổng hợp các thử nghiệm của chúng ta về việc tạo token chuẩn Token-2022 với transfer hook và nỗ lực kiểm tra token trên các DEX (Sàn giao dịch phi tập trung) trên Solana Devnet. Mục tiêu chính là tạo token với khả năng thực thi mã tùy chỉnh khi token được chuyển, và kiểm tra hoạt động trong môi trường DEX.
+### 1.1. Tổng quan
 
-## Nội Dung Chính
+Solana Token-2022 là phiên bản cải tiến của chuẩn Token SPL truyền thống, bổ sung nhiều tính năng mới như transfer hook, confidential transfers, metadata và các extension khác. Trong số đó, transfer hook là một tính năng quan trọng cho phép thực thi mã tùy chỉnh mỗi khi token được chuyển, mở ra nhiều ứng dụng tiềm năng cho DeFi, GameFi và các dự án blockchain khác.
 
-### 1. Tạo Token-2022 với Transfer Hook
+### 1.2. Mục tiêu nghiên cứu
 
-Chúng tôi đã sử dụng Anchor Framework để phát triển một transfer hook program và tạo token chuẩn Token-2022 với transfer hook extension. Quy trình này bao gồm:
+Nghiên cứu này nhằm mục đích:
+- Tạo và triển khai token Solana Token-2022 với transfer hook
+- Đánh giá khả năng tích hợp token này với các DEX (Decentralized Exchange) hiện có
+- Xác định các thách thức kỹ thuật và đề xuất giải pháp khả thi
 
-- Xây dựng smart contract Solana với Anchor để xử lý transfer hook
-- Tạo mint account với extension TransferHook
-- Khởi tạo ExtraAccountMetaList để cung cấp các tài khoản bổ sung khi chuyển token
-- Tạo và cấp token cho tài khoản thử nghiệm
+### 1.3. Transfer Hook là gì?
 
-### 2. Test chức năng Transfer Hook
+Transfer hook là một extension của Token-2022 cho phép chạy một chương trình tùy chỉnh mỗi khi token được chuyển đi. Điều này mở ra nhiều khả năng mới như:
 
-Chúng tôi đã thử nghiệm transfer hook bằng cách:
-- Chuyển token giữa các tài khoản và xác minh hook được kích hoạt
-- Kiểm tra log giao dịch để đảm bảo logic transfer hook được thực thi
-- Xác minh các tài khoản theo dõi (tracker) được cập nhật chính xác
+- Ghi lại lịch sử giao dịch on-chain
+- Tính phí giao dịch tự động
+- Triển khai cơ chế tokenomics phức tạp (ví dụ: burning, rebasing, v.v.)
+- Thực thi các quy tắc chuyển token (ví dụ: giới hạn số lượng, cấm một số địa chỉ)
 
-### 3. Nỗ lực test với DEX
+## 2. Phương pháp nghiên cứu
 
-Chúng tôi đã cố gắng kiểm tra token với các DEX trên Devnet:
-- Raydium: Tạo pool và thử swap với Raydium SDK
-- Jupiter: Thử nghiệm với Jupiter Aggregator
-- Fluxbeam: Kiểm tra khả năng tích hợp
+### 2.1. Công nghệ sử dụng
 
-Tuy nhiên, gặp nhiều thách thức vì:
-- Raydium không hỗ trợ đầy đủ Token-2022 với Transfer Hook
-- Compute budget không đủ cho transfer hook trong môi trường DEX
-- Thiếu liquidity trên Devnet để test thực tế
+- Solana Blockchain (Devnet)
+- Solana Program Library (SPL)
+- Token-2022 Extension
+- Rust (cho smart contract)
+- JavaScript (cho client và testing)
 
-## Phân Tích Kỹ Thuật
+### 2.2. Quy trình thực hiện
 
-### Vấn đề Compute Budget
+1. Tạo smart contract transfer hook đơn giản bằng Rust/Anchor
+2. Triển khai token Token-2022 với transfer hook trên Solana Devnet
+3. Phát triển các script test để:
+   - Chuyển token trực tiếp giữa các ví
+   - Tạo và sử dụng pool trên các DEX khác nhau
+4. Đánh giá khả năng tích hợp với các DEX phổ biến: Raydium, SPL token-swap, v.v.
 
-Transfer hook cần nhiều compute units hơn cho mỗi giao dịch chuyển token. Cần tăng compute budget:
+## 3. Triển khai Transfer Hook
 
-```javascript
-const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
-  units: 1_000_000
-});
-```
+### 3.1. Thiết kế Token-2022 với Transfer Hook
 
-### Vấn đề với DEX
+Chúng tôi đã tạo một token Token-2022 đơn giản với transfer hook có các đặc điểm sau:
 
-Các DEX hiện tại gặp khó khăn với Token-2022 transfer hook vì:
-- Không tự động tăng compute budget
-- Không xử lý lỗi từ transfer hook
-- Transaction phức tạp với nhiều chuyển token
+- Địa chỉ mint: `9ATnKRbaZ45XKXBicw7CB9pWWAfStQWMAdW7VYyMXi22`
+- Program ID của Transfer Hook: `7ZbHwsNJCPeFCMisykL1Davm7eygVFoi5yx9pDaGbTsg`
+- 9 decimals
+- Chức năng của transfer hook: Ghi lại số lần chuyển token và lượng token gần nhất được chuyển
 
-### Các thách thức khác
+### 3.2. Yêu cầu đặc biệt khi chuyển token
 
-- Thiết lập pool trên Devnet phức tạp
-- Tương thích hạn chế với ví như Phantom khi giao dịch với DEX
-- Transfer hook tăng phí giao dịch
+Để chuyển Token-2022 có transfer hook, cần thêm một số tham số đặc biệt vào giao dịch:
 
-## Thách Thức Chính
-
-1. **Hỗ trợ hạn chế từ DEX**: Hầu hết các DEX chưa hỗ trợ đầy đủ Token-2022 với transfer hook
-2. **Vấn đề compute budget**: Transfer hook cần nhiều compute units hơn
-3. **Phức tạp về tích hợp**: Cần thay đổi cấu trúc transaction của DEX để hỗ trợ token với hook
-4. **Thiếu môi trường test**: Khó kiểm tra đầy đủ trên Devnet do thiếu liquidity và hỗ trợ
-
-## Kết Quả Chính
-
-1. **Thành công**:
-   - Tạo thành công token Token-2022 với transfer hook
-   - Transfer hook hoạt động đúng khi chuyển token trực tiếp
-   - Xây dựng được smart contract mẫu cho transfer hook
-
-2. **Không thành công**:
-   - Chưa tạo được pool trên DEX cho token với transfer hook
-   - Chưa swap được token thông qua DEX
-   - Raydium và các DEX khác không hỗ trợ đầy đủ Transfer Hook
-
-## Đề Xuất Tiếp Theo
-
-1. **Để tiếp tục test trên Devnet:**
-   - Sử dụng SPL token-swap để tạo pool đơn giản
-   - Phát triển script thủ công tương tác với AMM program
-   - Tiếp tục test với Phantom Wallet hoặc các ví khác
-
-2. **Tìm kiếm DEX hỗ trợ Token-2022:**
-   - Theo dõi cập nhật từ Raydium về hỗ trợ Token-2022
-   - Khám phá Orca, OpenBook và các DEX khác có thể hỗ trợ tốt hơn cho Token-2022
-   - Theo dõi tin tức từ cộng đồng Solana về các sàn hỗ trợ Token-2022
-
-3. **Phát triển transfer hook nâng cao:**
-   - Thêm logic phức tạp hơn trong transfer hook
-   - Tích hợp với các use case khác của Token-2022
-   - Xem xét các mô hình token economy sáng tạo
-
-## Phương Án Tích Hợp DEX Khả Thi Nhất
-
-Dựa trên nghiên cứu và phân tích kỹ thuật, chúng tôi đề xuất phương án khả thi nhất hiện tại để tích hợp Token-2022 có transfer hook vào môi trường DEX:
-
-### Phương Án: Tự Phát Triển Pool Đơn Giản
-
-**Bước thực hiện:**
-1. **Cài đặt và sửa đổi SPL token-swap:**
-   ```bash
-   git clone https://github.com/solana-labs/solana-program-library
-   cd solana-program-library/token-swap
+1. **Tăng compute budget**: Do transfer hook chạy code tùy chỉnh, cần tăng compute budget cho giao dịch
+   ```javascript
+   const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
+     units: 1_000_000
+   });
    ```
 
-2. **Điều chỉnh mã nguồn để hỗ trợ Token-2022:**
-   - Sửa đổi hàm xử lý swap để tương thích với Token-2022
-   - Tăng compute budget cho transfer hook
-   - Xử lý các lỗi phát sinh từ transfer hook
+2. **Thêm tài khoản bổ sung (extra accounts)**: Transfer hook yêu cầu thêm các tài khoản sau vào instruction
+   ```javascript
+   transferInstruction.keys.push(
+     { pubkey: extraAccountMetaListPDA, isSigner: false, isWritable: false },
+     { pubkey: TRANSFER_HOOK_PROGRAM_ID, isSigner: false, isWritable: false },
+     { pubkey: logTrackerPDA, isSigner: false, isWritable: true }
+   );
+   ```
 
-3. **Triển khai và khởi tạo pool:**
-   - Triển khai program đã sửa đổi
-   - Tạo pool với token của chúng ta và một token phổ biến (như SOL)
-   - Cung cấp thanh khoản ban đầu
+3. **Skip preflight**: Khi test trên Devnet, đôi khi cần bỏ qua kiểm tra preflight
+   ```javascript
+   const txid = await sendAndConfirmTransaction(
+     connection,
+     transaction,
+     signers,
+     { skipPreflight: true }
+   );
+   ```
 
-**Ưu điểm:**
-- Kiểm soát hoàn toàn quá trình phát triển
-- Có thể tùy chỉnh để phù hợp với nhu cầu cụ thể của token
-- Thời gian triển khai ngắn (2-4 tuần)
-- Không phụ thuộc vào sự hỗ trợ từ DEX bên ngoài
-- Yêu cầu ít nguồn lực hơn các phương án khác
-- Tính khả thi kỹ thuật cao
+## 4. Thử nghiệm tích hợp với DEX
 
-**Nhược điểm:**
-- Hạn chế về tính thanh khoản và người dùng
-- Thiếu các tính năng tiên tiến như CLMM
-- Cần nguồn lực phát triển và bảo trì
+### 4.1. Chuyển token trực tiếp
 
-**Sửa đổi kỹ thuật:**
+Chúng tôi đã thử nghiệm chuyển token trực tiếp giữa các ví và xác nhận transfer hook hoạt động đúng. Khi chuyển token, các bước sau diễn ra:
 
-**Tạo giao diện người dùng đơn giản để test:**
-   - Xây dựng UI cơ bản cho phép nhập số lượng và thực hiện swap
-   - Hiển thị kết quả giao dịch và thông tin pool
+1. Token được chuyển từ ví nguồn đến ví đích
+2. Transfer hook tự động thực thi, ghi lại thông tin vào tài khoản LogTracker
+3. Thông tin về số lần chuyển và số lượng token được cập nhật
 
+Kết quả thử nghiệm cho thấy transfer hook hoạt động ổn định khi chuyển token trực tiếp.
 
+### 4.2. Tích hợp với SPL Token-Swap
 
-**Dự kiến kết quả:**
-- Môi trường test swap đầy đủ chức năng
-- Proof-of-concept cho việc tích hợp Token-2022 với transfer hook vào DEX
-- Cơ sở để phát triển các tính năng nâng cao hơn trong tương lai
+Chúng tôi đã thử nghiệm tạo pool với SPL Token-Swap program, kết quả như sau:
 
-## Kết Luận
+- **Tạo tài khoản pool**: THÀNH CÔNG
+- **Chuyển token vào pool**: THÀNH CÔNG (cả token-2022 và token thường)
+- **Khởi tạo pool**: THẤT BẠI (Custom Program Error 1)
+- **Swap token**: THẤT BẠI (không thể swap do pool không khởi tạo hoàn chỉnh)
 
-Nghiên cứu của chúng tôi đã chứng minh khả năng tạo và sử dụng Token-2022 với transfer hook, đồng thời xác định các thách thức trong việc tích hợp với các DEX hiện tại. Mặc dù hạn chế về hỗ trợ DEX, transfer hook vẫn mang lại tiềm năng lớn cho các ứng dụng token economy nâng cao.
+### 4.3. Tích hợp với Raydium và các DEX khác
 
-phương án tự phát triển pool đơn giản như giải pháp khả thi nhất hiện tại, đồng thời tiếp tục theo dõi sự phát triển từ các DEX lớn về hỗ trợ Token-2022 đầy đủ trong tương lai.
+Kết quả thử nghiệm với Raydium và các DEX khác:
 
-## Tài Liệu Tham Khảo
+- **Raydium**: KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
+- **Orca**: KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
+- **Các DEX khác**: KHÔNG KHẢ THI (chưa hỗ trợ token-2022)
 
-1. [Raydium Documentation](https://docs.raydium.io/)
-2. [Token-2022 Documentation](https://spl.solana.com/token-2022)
-3. [Solana Transfer Hook Documentation](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook) 
+## 5. Phân tích kết quả và thách thức
+
+### 5.1. Thách thức kỹ thuật
+
+Chúng tôi đã xác định ba thách thức chính khi tích hợp token-2022 với transfer hook vào các DEX:
+
+1. **Extra accounts**: Token-2022 với transfer hook yêu cầu thêm tài khoản bổ sung vào mỗi giao dịch chuyển token, trong khi các DEX hiện tại không được thiết kế để thêm các tài khoản này.
+
+2. **Compute budget**: Transfer hook cần nhiều compute budget hơn để thực thi, trong khi các DEX thường không tự động tăng compute budget cho giao dịch.
+
+3. **Các kiểm tra của DEX**: Nhiều DEX có các kiểm tra nghiêm ngặt về loại token và cách token được chuyển. Các kiểm tra này thường không tương thích với token-2022 và các extension của nó.
+
+### 5.2. Phân tích mã lỗi
+
+Khi khởi tạo pool SPL token-swap, chúng tôi nhận được lỗi Custom Program Error 1:
+
+```
+Error initializing pool: SendTransactionError: Transaction zaxWHqRjRakvMxRwS8RNCWwhtiL3PDWJ2AqJc8NPZXPaGsKtX6Xf3yYJoYpq9xKZ4gFf93DH1vQnjcfHwfmmMZX resulted in an error.
+Status: ({"err":{"InstructionError":[2,{"Custom":1}]}})
+```
+
+Lỗi này xảy ra do SPL token-swap program không được thiết kế để xử lý token-2022 và các extension của nó, đặc biệt là transfer hook.
+
+### 5.3. Phân tích thành công một phần
+
+Mặc dù không thể tạo pool hoàn chỉnh, chúng tôi đã thành công trong việc:
+
+1. Tạo tất cả các tài khoản cần thiết cho pool
+2. Chuyển cả token-2022 với transfer hook và token thường vào pool
+3. Xác nhận transfer hook hoạt động khi chuyển token vào pool
+
+Điều này chứng tỏ việc tích hợp là có khả năng nếu các DEX được sửa đổi để hỗ trợ token-2022.
+
+## 6. Giải pháp tiềm năng
+
+### 6.1. Sửa đổi SPL Token-Swap
+
+Một giải pháp khả thi là sửa đổi mã nguồn của SPL token-swap program để hỗ trợ token-2022 và transfer hook:
+
+1. Cập nhật program để xử lý các token khác ngoài SPL-Token tiêu chuẩn
+2. Thêm khả năng thêm extra accounts vào transaction khi cần thiết
+3. Tăng compute budget cho các giao dịch liên quan đến token-2022
+
+### 6.2. Phát triển AMM tùy chỉnh
+
+Một giải pháp khác là xây dựng một AMM (Automated Market Maker) mới được thiết kế đặc biệt cho token-2022:
+
+1. Tạo AMM hiểu cách xử lý token-2022 và các extension của nó
+2. Tự động thêm các tài khoản bổ sung cần thiết cho transfer hook
+3. Tối ưu hóa cho token-2022 thay vì cố gắng tương thích ngược
+
+### 6.3. Đợi hỗ trợ chính thức
+
+Giải pháp an toàn nhất là đợi các DEX chính thức hỗ trợ token-2022 và transfer hook. Theo thông tin, các DEX lớn như Raydium và Orca đang phát triển hỗ trợ cho token-2022, nhưng chưa có thời gian triển khai cụ thể.
+
+## 7. Kết luận và đề xuất
+
+### 7.1. Tóm tắt kết quả
+
+1. **Token-2022 với transfer hook** hoạt động ổn định khi chuyển token trực tiếp giữa các ví.
+2. **Tích hợp với DEX hiện tại** gặp thách thức do các DEX chưa được thiết kế để xử lý token-2022 và transfer hook.
+3. **SPL token-swap** có thể được sửa đổi để hỗ trợ token-2022, nhưng cần thay đổi đáng kể.
+
+### 7.2. Đề xuất phát triển
+
+Dựa trên kết quả nghiên cứu, chúng tôi đề xuất:
+
+1. **Ngắn hạn**: Sử dụng token-2022 với transfer hook cho các chức năng không yêu cầu tích hợp DEX (ví dụ: chuyển token trực tiếp, staking, v.v.)
+
+2. **Trung hạn**: Phát triển hoặc sửa đổi một AMM đơn giản dựa trên SPL token-swap để hỗ trợ token-2022 và transfer hook.
+
+3. **Dài hạn**: Đợi các DEX chính thức hỗ trợ token-2022 và transfer hook, hoặc phát triển một DEX mới được thiết kế đặc biệt cho token-2022.
+
+### 7.3. Hướng nghiên cứu tương lai
+
+Các hướng nghiên cứu tiềm năng bao gồm:
+
+1. Tìm hiểu cách sửa đổi SPL token-swap program để hỗ trợ token-2022
+2. Phát triển DEX tùy chỉnh cho token-2022 và các extension của nó
+3. Nghiên cứu các use case khác của transfer hook ngoài DeFi
+
+## 8. Tài liệu tham khảo
+
+1. [Solana Token-2022 Documentation](https://spl.solana.com/token-2022)
+2. [SPL Token-Swap Documentation](https://spl.solana.com/token-swap)
+3. [Raydium Documentation](https://raydium.io/doc/)
+4. [Transfer Hook Documentation](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022/src/extension/transfer_hook) 
